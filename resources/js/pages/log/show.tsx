@@ -434,10 +434,14 @@ export default function Show({
         router.flushAll();
     }, [log]);
 
+    // Inertia drops async reloads once a deploy changes the asset version, so the button has to load the page in full.
+    const isOutdated = useRef(false);
+
     useEffect(
         () =>
             router.on('location', (event) => {
                 if (event.detail.versionChange) {
+                    isOutdated.current = true;
                     stopPolling();
                 }
             }),
@@ -447,6 +451,23 @@ export default function Show({
     const dismissNotice = useCallback(() => {
         setNotice((current) => current && { ...current, leaving: true });
     }, []);
+
+    const showNewCommits = () => {
+        if (isOutdated.current) {
+            window.location.assign(window.location.pathname);
+        } else {
+            reloadNewestFirst();
+        }
+    };
+
+    const reloadNewestFirst = () =>
+        router.reload({
+            only: ['commits', 'newCommitsCount'],
+            reset: ['commits'],
+            data: { since: '' },
+            preserveUrl: true,
+            onSuccess: () => window.scrollTo({ top: 0, behavior: 'smooth' }),
+        });
 
     const noticeLeaving = notice?.leaving;
     useEffect(() => {
